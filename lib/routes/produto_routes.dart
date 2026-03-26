@@ -26,18 +26,31 @@ class ProdutoRoutes {
       return Response.ok(jsonEncode(produto.toMap()), headers: {'Content-Type': 'application/json'});
     });
 
-    router.post('/', (Request request) async {
+router.post('/', (Request request) async {
       final payload = await request.readAsString();
       final data = jsonDecode(payload);
 
-      if (!data.containsKey('nome') || !data.containsKey('preco')) {
-         return Response.badRequest(body: 'Campos nome e preco obrigatórios');
+      if (data is List) {
+        List<int> idsCadastrados = [];
+        for (var item in data) {
+          if (item is Map && item.containsKey('nome') && item.containsKey('preco')) {
+            final produto = Produto(nome: item['nome'], preco: (item['preco'] as num).toDouble());
+            idsCadastrados.add(_dbHelper.insertProduto(produto));
+          }
+        }
+        return Response(201, body: 'Produtos cadastrados com os IDs: $idsCadastrados');
       }
 
-      final produto = Produto(nome: data['nome'], preco: (data['preco'] as num).toDouble());
-      final id = _dbHelper.insertProduto(produto);
+      if (data is Map) {
+        if (!data.containsKey('nome') || !data.containsKey('preco')) {
+           return Response.badRequest(body: 'Campos nome e preco obrigatórios');
+        }
+        final produto = Produto(nome: data['nome'], preco: (data['preco'] as num).toDouble());
+        final id = _dbHelper.insertProduto(produto);
+        return Response(201, body: 'Produto cadastrado com id $id');
+      }
 
-      return Response(201, body: 'Produto cadastrado com id $id');
+      return Response.badRequest(body: 'Formato de JSON inválido');
     });
 
     router.put('/<id>', (Request request, String id) async {
